@@ -10,11 +10,6 @@ use Getopt::Long;
 use Text::CSV;
 
 
-my $aid=2150;
-
-my $md_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-med?all=1";
-my $sr_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-serebro?all=1";
-my $ss_url="https://www.wolmar.ru/auction/$aid/monety-rsfsr-sssr-rossii?all=1";
 
 
 my $ex_sr={
@@ -27,15 +22,34 @@ my $ex_sr={
              1870=>'-',
              1872=>'-',
              1874=>'-',
+             1878=>'СПБ НI',
+             1883=>'СПБ ДС',
+             1899=>'СПБ АГ',
+             1901=>'СПБ ФЗ',
+             1913=>'СПБ ВС',
         }, 
         '10 копеек' => {
+             1866=>'СПБ НФ',
+             1877=>'СПБ НI',
+             1878=>'СПБ НФ',     
              1883=>'-',
+             1913=>'СПБ ВС',
         },
         '15 копеек' => {
+             1877=>'СПБ НI',
+             1882=>'СПБ ДС',
              1885=>'-',
              1887=>'-',
              1888=>'-',
              1896=>'-',
+             1912=>'СПБ ЭБ',
+             1913=>'СПБ ВС',
+        },
+        '20 копеек' => {
+             1878 => 'СПБ НФ',     
+             1901 => 'СПБ ФЗ',
+             1912 => 'СПБ ЭБ',
+             1917 => '-',        
         }
 
 
@@ -144,10 +158,25 @@ my $ex_md={
 };
 
 my $ex_ssr ={
+    '3 рубля. Московский кремль' => '-',
+    '3 рубля. Экспедиция Кука в Русскую Америку' => '-',
+    '3 рубля. Петропавловская крепость' => '-',
+    '3 рубля. Встреча в верхах в интересах детей' => '-',
+    '3 рубля. Форт Росс' => '-',   
+
     '2 рубля. 200-летие со дня рождения Е.А. Баратынского' => '-',
-    '2 рубля. 100-летие со дня рождения Л.П. Орловой' => '-', 
+    '2 рубля. 150-летие со дня рождения Ф.А. Васильева'=>'-',
+    '2 рубля. 100-летие со дня рождения Л.П. Орловой' => '-',
+    '2 рубля. 100-летие со дня рождения В.П. Чкалова' => '-',
+    '2 рубля. 100-летие со дня рождения М.А. Шолохова' => '-', 
+    '2 рубля. Лев' => '2002',
+    '2 рубля. Стрелец' => '2002',
     '2 рубля. Академик В.П. Глушко - 100 лет со дня рождения' => '-',
-    '2 рубля. Учёный-энциклопедист Д.И. Менделеев - 175 лет со дня рождения' => '-',        
+    '2 рубля. Учёный-энциклопедист Д.И. Менделеев - 175 лет со дня рождения' => '-',   
+    '2 рубля. Художник И.И. Левитан - 150-летие со дня рождения' => '-',
+    '2 рубля. Художник М.В. Нестеров - 150-летие со дня рождения' => '-',
+    '2 рубля. Государственный деятель П.А. Столыпин - к 150-летию со дня рождения' => '-',
+
 };
 
 
@@ -162,6 +191,16 @@ $ua->default_header('Referer' => 'https://www.wolmar.ru/');
 $ua->default_header('DNT' => '1');
 $ua->default_header('Connection' => 'keep-alive');
 $ua->timeout(30);
+
+
+
+my $response = $ua->get("https://www.wolmar.ru/");
+my ($aid)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион VIP №\d+<\/a>/);
+
+my $md_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-med?all=1";
+my $sr_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-serebro?all=1";
+my $ss_url="https://www.wolmar.ru/auction/$aid/monety-rsfsr-sssr-rossii?all=1";
+print "AID:>> $aid\n";
 
 
 my $tree = HTML::TreeBuilder::XPath->new;
@@ -320,7 +359,7 @@ foreach my $lot (@lots) {
     }elsif ($ex_sr->{$title}->{$lot_year} && $ex_sr->{$title}->{$lot_year} ne $mint && $price<10000 && $metal eq 'Ag' && $lot_condition!~/AU \d/) {
         $found_count++;
 
-    } elsif ($ex_ssr->{$title} && $ex_md->{$title}->{$lot_year} ne $mint && $price<10000 && $lot_condition!~/CAMEO/) {
+    } elsif ($ex_ssr->{$title} && $ex_ssr->{$title} ne $lot_year && $price<10000 && $lot_condition!~/CAMEO/) {
         $found_count++;
 
     } else {
