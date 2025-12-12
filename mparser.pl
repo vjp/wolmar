@@ -199,7 +199,7 @@ my $ex_ssr ={
     '2 рубля. Художник М.В. Нестеров - 150-летие со дня рождения' => '-',
     '2 рубля. Государственный деятель П.А. Столыпин - к 150-летию со дня рождения' => '-',
     '2 рубля. Композитор А.К. Глазунов' => '-',
-
+    '2 рубля. Писатель А.И. Солженицын, к 100-летию со дня рождения (11.12.1918)' => '-',
 };
 
 
@@ -382,7 +382,7 @@ foreach my $lot (@lots) {
     }elsif ($ex_sr->{$title}->{$lot_year} && $ex_sr->{$title}->{$lot_year} ne $mint && $price<10000 && $metal eq 'Ag' && $lot_condition!~/(AU|MS) \d/) {
         $found_count++;
 
-    } elsif ($ex_ssr->{$title} && $ex_ssr->{$title} ne $lot_year && $price<10000 && $lot_condition!~/CAMEO/) {
+    } elsif ($ex_ssr->{$title} && $ex_ssr->{$title} ne $lot_year && $price<10000 && $lot_condition!~/(CAMEO|PF \d)/) {
         $found_count++;
 
     } else {
