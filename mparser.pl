@@ -153,7 +153,6 @@ my $ex_md={
             1878=>'-',
             1879=>'-',
             1880=>'-',
-            1881=>'-',
             1882=>'-',
             1883=>'-',
             1884=>'-',
@@ -218,10 +217,13 @@ $ua->timeout(30);
 
 my $response = $ua->get("https://www.wolmar.ru/");
 my ($aid)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион VIP №\d+<\/a>/);
+$aid=$ARGV[0] if $ARGV[0];
 
 my $md_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-med?all=1";
 my $sr_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-serebro?all=1";
 my $ss_url="https://www.wolmar.ru/auction/$aid/monety-rsfsr-sssr-rossii?all=1";
+
+
 print "AID:>> $aid\n";
 
 
