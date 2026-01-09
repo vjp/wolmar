@@ -36,7 +36,7 @@ my $ex_sr={
              1913=>'СПБ ВС',
         },
         '15 копеек' => {
-             1877=>'СПБ HI',
+             1877=>'(HI|НI)',
              1882=>'СПБ ДС',
              1885=>'-',
              1887=>'-',
@@ -72,7 +72,72 @@ my $ex_sr={
              1876=>'-',
              1879=>'-',
              1880=>'-',
+             1881=>'-',
+             1882=>'-',
+             1883=>'-',
+             1884=>'-',
+             1885=>'-',
+             1886=>'-',
+             1887=>'-',
+             1888=>'-',
+             1889=>'-',
+             1890=>'-',
+             1891=>'-',
+             1892=>'-',
+             1893=>'-',
+             1894=>'-',
         },    
+        '50 копеек' => {
+             1855=>'-',
+             1856=>'-',
+             1860=>'-',
+             1861=>'-',
+             1862=>'-',
+             1863=>'-',
+             1864=>'-',
+             1865=>'-',
+             1866=>'-',
+             1867=>'-',
+             1868=>'-',
+             1869=>'-',
+             1870=>'-',
+             1871=>'-',
+             1872=>'-',
+             1873=>'-',
+             1874=>'-',
+             1875=>'-',
+             1876=>'-',
+             1877=>'(HI|НI)',
+             1879=>'-',
+             1880=>'-',
+             1881=>'-',
+             1882=>'-',
+             1883=>'-',
+             1884=>'-',
+             1885=>'-',
+             1886=>'-',
+             1887=>'-',
+             1888=>'-',
+             1889=>'-',
+             1890=>'-',
+             1891=>'-',
+             1892=>'-',
+             1893=>'-',
+             1898=>'-',
+             1901=>'-',
+             1902=>'-',
+             1903=>'-',
+             1904=>'-',
+             1905=>'-',
+             1906=>'-',
+             1907=>'-',
+             1908=>'-',
+             1909=>'-',
+             1910=>'-',
+             1912=>'ЭБ',
+             1913=>'ВС',
+             1914=>'-',
+        }
 
 
 };        
@@ -187,7 +252,6 @@ my $ex_ssr ={
 
     '2 рубля. 200-летие со дня рождения Е.А. Баратынского' => '-',
     '2 рубля. 150-летие со дня рождения Ф.А. Васильева'=>'-',
-    '2 рубля. 100-летие со дня рождения Л.П. Орловой' => '-',
     '2 рубля. 100-летие со дня рождения В.П. Чкалова' => '-',
     '2 рубля. Лев' => '2002',
     '2 рубля. Стрелец' => '2002',
@@ -198,7 +262,166 @@ my $ex_ssr ={
     '2 рубля. Государственный деятель П.А. Столыпин - к 150-летию со дня рождения' => '-',
     '2 рубля. Композитор А.К. Глазунов' => '-',
     '2 рубля. Писатель А.И. Солженицын, к 100-летию со дня рождения (11.12.1918)' => '-',
+    '1 рубль. Дальневосточная черепаха' => '-',
+    '1 рубль. Система арбитражных судов Российской Федерации' => '-',
+    '1 рубль. Московский метрополитен' => '-',
+
 };
+
+my $html = <<'HTML_HEADER';
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аукционные лоты</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .info-bar {
+            background-color: #e8f5e9;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #2e7d32;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .link-cell a {
+            color: #2196F3;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        .link-cell a:hover {
+            text-decoration: underline;
+            color: #0d8bf2;
+        }
+        .price-cell {
+            font-weight: bold;
+            color: #e53935;
+        }
+        .id-cell {
+            font-family: monospace;
+            font-weight: bold;
+            color: #555;
+        }
+        .status-cell {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .metal-cell {
+            color: #555;
+        }
+        .year-cell {
+            color: #777;
+        }
+        .bids-low {
+            color: #757575;
+        }
+        .bids-medium {
+            color: #fb8c00;
+        }
+        .bids-high {
+            color: #e53935;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        @media (max-width: 768px) {
+            table {
+                font-size: 14px;
+            }
+            th, td {
+                padding: 8px 10px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .info-bar {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Аукционные лоты монет</h1>
+HTML_HEADER
+
+$html .= <<"INFO_BAR";
+        <table>
+            <thead>
+                <tr>
+                    <th>ID лота</th>
+                    <th>Название</th>
+                    <th>Год</th>
+                    <th>Металл</th>
+                    <th>Чеканка</th>
+                    <th>Состояние</th>
+                    <th>Ставки</th>
+                    <th>Лидер</th>
+                    <th>Текущая цена</th>
+                    <th>Окончание</th>
+                    <th>Ссылка</th>
+                </tr>
+            </thead>
+            <tbody>
+INFO_BAR
 
 
 my $verbose=1;
@@ -225,12 +448,23 @@ my $ss_url="https://www.wolmar.ru/auction/$aid/monety-rsfsr-sssr-rossii?all=1";
 
 
 print "AID:>> $aid\n";
+my $filename="au$aid.html";
+open(FH, '>:utf8', $filename) or die "Не могу создать файл $filename: $!";
 
 
 my $tree = HTML::TreeBuilder::XPath->new;
 
 
 # Получаем страницу
+my $url=$sr_url;
+print "Загружаем страницу: $url\n" if $verbose;
+my $response = $ua->get($url);
+die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
+$tree->parse($response->decoded_content);
+$tree->eof;
+
+
+
 my $url=$md_url;
 
 print "Загружаем страницу: $url\n" if $verbose;
@@ -241,19 +475,13 @@ $tree->parse($response->decoded_content);
 $tree->eof;
 
 
-$url=$ss_url;
+my $url=$ss_url;
 print "Загружаем страницу: $url\n" if $verbose;
 my $response = $ua->get($url);
 die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
 $tree->parse($response->decoded_content);
 $tree->eof;
 
-$url=$sr_url;
-print "Загружаем страницу: $url\n" if $verbose;
-my $response = $ua->get($url);
-die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
-$tree->parse($response->decoded_content);
-$tree->eof;
 
 my @lots = $tree->findnodes('//tr[@lot_id]');
 
@@ -262,6 +490,11 @@ print "Найдено лотов: " . scalar(@lots) . "\n\n";
 
 my $found_count = 0;
 my $skipped_count = 0;
+
+
+
+
+
 
 foreach my $lot (@lots) {
     # Получаем все ячейки <td> в строке
@@ -374,13 +607,13 @@ foreach my $lot (@lots) {
     $title=~s/ Ильин.*//;
 
     $price=~s/ //g;
-    if ($ex_md->{$title}->{$lot_year} && $ex_md->{$title}->{$lot_year} ne $mint && $price<10000 && $metal eq 'Cu' && $lot_condition!~/(AU|MS) (\d+|Det)/) {
+    if ($ex_md->{$title}->{$lot_year} && ($ex_md->{$title}->{$lot_year} ne $mint) && $price<10000 && $metal eq 'Cu' && $lot_condition!~/(AU|MS) (\d+|Det)/) {
         if ($ex_md->{$title}->{$lot_year} ne '-'  && !$mint) {
             next
         } else {
             $found_count++;
         }    
-    }elsif ($ex_sr->{$title}->{$lot_year} && $ex_sr->{$title}->{$lot_year} ne $mint && $price<10000 && $metal eq 'Ag' && $lot_condition!~/(AU|MS) \d/) {
+    }elsif ($ex_sr->{$title}->{$lot_year} && ($mint!~/$ex_sr->{$title}->{$lot_year}/) && $price<10000 && ($metal eq 'Ag') && $lot_condition!~/(AU|MS) \d/) {
         $found_count++;
 
     } elsif ($ex_ssr->{$title} && $ex_ssr->{$title} ne $lot_year && $price<10000 && $lot_condition!~/(CAMEO|PF \d)/) {
@@ -401,10 +634,31 @@ foreach my $lot (@lots) {
     print "Металл: $metal\n";
     print "Чеканка: $mint\n";
     print "Состояние: $lot_condition\n";
-    print "Ставки: $bids\n";
+    print "Ставки: $bids \n";
+    print "Лидер: $seller \n";
+    
     print "Текущая цена: $price\n";
     print "Окончание: $end_time\n";
     print "-" x 60 . "\n";
+
+    my $bids_class = 'bids-low';
+    $bids_class = 'bids-medium' if $bids >= 1 && $bids <= 5;
+    $bids_class = 'bids-high' if $bids > 5;
+
+    $html .= "<tr>\n";
+    $html .= "    <td class=\"id-cell\">$lot_id</td>\n";
+    $html .= "    <td>$title</td>\n";
+    $html .= "    <td class=\"year-cell\">$lot_year</td>\n";
+    $html .= "    <td class=\"metal-cell\">$metal</td>\n";
+    $html .= "    <td>$mint</td>\n";
+    $html .= "    <td class=\"status-cell\">$lot_condition</td>\n";
+    $html .= "    <td class=\"$bids_class\">$bids</td>\n";
+    $html .= "    <td>$seller</td>\n";
+    $html .= "    <td class=\"price-cell\">$price ₽</td>\n";
+    $html .= "    <td>$end_time</td>\n";
+    $html .= "    <td class=\"link-cell\"><a href=\"$link\" target=\"_blank\">🔗 Перейти</a></td>\n";
+
+
 }
 
 $tree->delete;
@@ -412,3 +666,9 @@ print "\nГотово! ";
 print "Найдено новых лотов: $found_count. ";
 print "Пропущено (уже в коллекции): $skipped_count. ";
 print "\n";
+
+print FH $html;
+close FH;
+
+system("open $filename");
+
