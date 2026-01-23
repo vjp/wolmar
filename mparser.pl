@@ -21,7 +21,6 @@ my $ex_sr={
              1866=>'-',
              1870=>'-',
              1872=>'-',
-             # 1874=>'-',
              1878=>'СПБ НI',
              1883=>'СПБ ДС',
              1899=>'СПБ АГ',
@@ -86,8 +85,8 @@ my $ex_sr={
              1892=>'-',
              1893=>'-',
              1894=>'-',
-        },    
-        '50 копеек' => {
+        },  
+        'Полтина' =>{
              1855=>'-',
              1856=>'-',
              1860=>'-',
@@ -115,6 +114,9 @@ my $ex_sr={
              1883=>'-',
              1884=>'-',
              1885=>'-',
+        },
+
+        '50 копеек' => {
              1886=>'-',
              1887=>'-',
              1888=>'-',
@@ -298,7 +300,7 @@ my $ex_ssr ={
     '3 рубля. Петропавловская крепость' => '-',
     '3 рубля. Встреча в верхах в интересах детей' => '-',
     '3 рубля. Форт Росс' => '-',   
-
+    '2 рубля. 140-летие со дня рождения К.Л.Хетагурова' => '-',
     '2 рубля. 200-летие со дня рождения Е.А. Баратынского' => '-',
     '2 рубля. 150-летие со дня рождения Ф.А. Васильева'=>'-',
     '2 рубля. 100-летие со дня рождения В.П. Чкалова' => '-',
@@ -381,9 +383,13 @@ my $html = <<'HTML_HEADER';
             padding: 12px 15px;
             border-bottom: 1px solid #ddd;
         }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+        .trgreen {
+            background-color: #f0fff0;
         }
+        .trred {
+            background-color: #fff0f0;
+        }
+        
         tr:hover {
             background-color: #f1f1f1;
         }
@@ -697,7 +703,14 @@ foreach my $lot (@lots) {
     $bids_class = 'bids-medium' if $bids >= 1 && $bids <= 5;
     $bids_class = 'bids-high' if $bids > 5;
 
+   if ($seller ne 'vjpcoins' && $price<3000) {
+      $html .= "<tr class=\"trred\">\n";
+   } elsif ($seller eq 'vjpcoins') {
+     $html .= "<tr class=\"trgreen\">\n";
+   } else {
     $html .= "<tr>\n";
+   }
+
     $html .= "    <td class=\"id-cell\">$lot_id</td>\n";
     $html .= "    <td>$title</td>\n";
     $html .= "    <td class=\"year-cell\">$lot_year</td>\n";
