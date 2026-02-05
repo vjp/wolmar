@@ -797,7 +797,7 @@ foreach my $lot (@lots) {
         } else {
             $found_count++;
         }    
-    }elsif ($ex_sr->{$title}->{$lot_year} && ($mint!~/$ex_sr->{$title}->{$lot_year}/) && $price<10000 && ($metal eq 'Ag') && $lot_condition!~/(AU|MS|PL|UNC|XF) (\d+|Det)/) {
+    }elsif ($ex_sr->{$title}->{$lot_year} && ($mint!~/$ex_sr->{$title}->{$lot_year}/) && $price<10000 && ($metal eq 'Ag') && $lot_condition!~/(AU|MS|PL|UNC|XF|F) (\d+|Det)/) {
         $found_count++;
 
     } elsif ($ex_ssr->{$title} && $ex_ssr->{$title} ne $lot_year && $price<10000 && $lot_condition!~/(CAMEO|PF \d)/) {
