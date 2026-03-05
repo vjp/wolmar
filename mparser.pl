@@ -632,17 +632,28 @@ $ua->timeout(30);
 
 my $response = $ua->get("https://www.wolmar.ru/");
 my ($aid)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион VIP №\d+<\/a>/);
-$aid=$ARGV[0] if $ARGV[0];
+my ($aids)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион Standart №\d+<\/a>/);
+
+
+if ($ARGV[0]) {
+    $aid=$ARGV[0];
+    undef $aids
+}    
+
 
 my $md_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-med?all=1";
 my $sr_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-serebro?all=1";
 my $ss_url="https://www.wolmar.ru/auction/$aid/monety-rsfsr-sssr-rossii?all=1";
 
+my $md2_url="https://www.wolmar.ru/auction/$aids/monety-rossii-do-1917-med?all=1";
+my $sr2_url="https://www.wolmar.ru/auction/$aids/monety-rossii-do-1917-serebro?all=1";
+my $ss2_url="https://www.wolmar.ru/auction/$aids/monety-rsfsr-sssr-rossii?all=1";
 
-print "AID:>> $aid\n";
+
+
+print "AID:>> $aid ($aids)\n";
 my $filename="au$aid.html";
 open(FH, '>:utf8', $filename) or die "Не могу создать файл $filename: $!";
-
 
 my $tree = HTML::TreeBuilder::XPath->new;
 
@@ -654,25 +665,42 @@ my $response = $ua->get($url);
 die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
 $tree->parse($response->decoded_content);
 $tree->eof;
-
-
-
 my $url=$md_url;
-
 print "Загружаем страницу: $url\n" if $verbose;
 my $response = $ua->get($url);
 die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
 # Используем XPath для более гибкого поиска
 $tree->parse($response->decoded_content);
 $tree->eof;
-
-
 my $url=$ss_url;
 print "Загружаем страницу: $url\n" if $verbose;
 my $response = $ua->get($url);
 die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
 $tree->parse($response->decoded_content);
 $tree->eof;
+
+
+if ($aids) {
+    my $url=$sr2_url;
+    print "Загружаем страницу: $url\n" if $verbose;
+    my $response = $ua->get($url);
+    die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
+    $tree->parse($response->decoded_content);
+    $tree->eof;
+    my $url=$md2_url;
+    print "Загружаем страницу: $url\n" if $verbose;
+    my $response = $ua->get($url);
+    die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
+    # Используем XPath для более гибкого поиска
+    $tree->parse($response->decoded_content);
+    $tree->eof;
+    my $url=$ss2_url;
+    print "Загружаем страницу: $url\n" if $verbose;
+    my $response = $ua->get($url);
+    die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
+    $tree->parse($response->decoded_content);
+    $tree->eof;
+}
 
 
 my @lots = $tree->findnodes('//tr[@lot_id]');
