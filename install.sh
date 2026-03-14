@@ -1,5 +1,5 @@
-sudo cpanm LWP
-sudo cpanm HTML::TreeBuilder::XPath
-sudo cpanm Text::CSV
-sudo cpanm Net::SSLeay --force
-sudo cpanm LWP::Protocol::https
+cpanm LWP
+cpanm HTML::TreeBuilder::XPath
+cpanm Text::CSV
+cpanm Net::SSLeay --force
+cpanm LWP::Protocol::https
