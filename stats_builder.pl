@@ -35,8 +35,14 @@ my $response = $ua->get("https://www.wolmar.ru/");
 my $content = $response->decoded_content;
 
 my %all_past_ids;
-while ($content =~ m{<div class="right_box_dark">.*?</div>}gs) {
-    my $box = $&;
+if ($content =~ m{<h2>VIP аукционы:</h2>\s*<div[^>]*>(.*?)</div>}s) {
+    my $box = $1;
+    while ($box =~ m{/auction/(\d+)}g) {
+        $all_past_ids{$1} = 1;
+    }
+}
+if ($content =~ m{<h2>Standart аукционы:</h2>\s*<div[^>]*>(.*?)</div>}s) {
+    my $box = $1;
     while ($box =~ m{/auction/(\d+)}g) {
         $all_past_ids{$1} = 1;
     }
