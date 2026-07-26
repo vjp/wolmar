@@ -34,24 +34,27 @@ my $dbh = init_db($db_file, $init);
 my $response = $ua->get("https://www.wolmar.ru/");
 my $content = $response->decoded_content;
 
-my %all_past_ids;
+my @vip;
 if ($content =~ m{<h2>VIP аукционы:</h2>\s*<div[^>]*>(.*?)</div>}s) {
     my $box = $1;
     while ($box =~ m{/auction/(\d+)}g) {
-        $all_past_ids{$1} = 1;
+        push @vip, $1;
     }
 }
+if (@vip > $count) { @vip = @vip[0 .. $count - 1]; }
+
+my @standart;
 if ($content =~ m{<h2>Standart аукционы:</h2>\s*<div[^>]*>(.*?)</div>}s) {
     my $box = $1;
     while ($box =~ m{/auction/(\d+)}g) {
-        $all_past_ids{$1} = 1;
+        push @standart, $1;
     }
 }
+if (@standart > $count) { @standart = @standart[0 .. $count - 1]; }
 
+my %all_past_ids;
+$all_past_ids{$_} = 1 for @vip, @standart;
 my @all_past = sort { $b <=> $a } keys %all_past_ids;
-if (@all_past > $count) {
-    @all_past = @all_past[0 .. $count - 1];
-}
 
 print "Найдено прошедших аукционов для парсинга: " . scalar(@all_past) . "\n";
 print "ID: " . join(", ", @all_past) . "\n\n";
