@@ -192,7 +192,7 @@ sub process_auction {
 
 sub clean_title {
     my ($t) = @_;
-    $t =~ s/ R\d+.*//;
+    $t =~ s/ R.*//;
     $t =~ s/ Петров.*//;
     $t =~ s/ Ильин.*//;
     $t =~ s/\s+$//;
