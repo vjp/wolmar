@@ -681,7 +681,7 @@ sub get_history {
     return undef unless $dbh;
     return undef unless $title;
     my $rows = $dbh->selectall_arrayref(
-        "SELECT price, condition, lot_id, auction_id, parsed_at FROM lots WHERE title = ? AND year = ? AND price > 0 ORDER BY parsed_at DESC LIMIT 20",
+        "SELECT price, condition, lot_id, auction_id, parsed_at, mint FROM lots WHERE title = ? AND year = ? AND price > 0 ORDER BY parsed_at DESC LIMIT 20",
         {}, $title, $year
     );
     return undef unless $rows && @$rows > 0;
@@ -956,13 +956,15 @@ foreach my $lot (@lots) {
         $detail_row .= qq{            <table>\n};
         $detail_row .= qq{                <tr>\n};
         $detail_row .= qq{                    <th>Сохранность</th>\n};
+        $detail_row .= qq{                    <th>МД</th>\n};
         $detail_row .= qq{                    <th>Цена</th>\n};
         $detail_row .= qq{                    <th>Аукцион</th>\n};
         $detail_row .= qq{                </tr>\n};
         for my $r (@{$hist->{rows}}) {
-            my ($price, $cond, $l_id, $auc_id) = @$r;
+            my ($price, $cond, $l_id, $auc_id, $parsed_at, $h_mint) = @$r;
             $detail_row .= qq{                <tr>\n};
             $detail_row .= qq{                    <td>$cond</td>\n};
+            $detail_row .= qq{                    <td>$h_mint</td>\n};
             $detail_row .= qq{                    <td class="hist-price">} . format_price($price) . qq{ ₽</td>\n};
             $detail_row .= qq{                    <td><a href="https://www.wolmar.ru/auction/$auc_id/$l_id" target="_blank">#$auc_id</a></td>\n};
             $detail_row .= qq{                </tr>\n};
