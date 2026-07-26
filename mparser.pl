@@ -686,7 +686,7 @@ sub get_history {
         $sql .= " AND mint = ?";
         push @bind, $mint;
     }
-    $sql .= " ORDER BY parsed_at DESC LIMIT 20";
+    $sql .= " ORDER BY auction_id DESC LIMIT 20";
     my $rows = $dbh->selectall_arrayref($sql, {}, @bind);
     return undef unless $rows && @$rows > 0;
     my $count = scalar @$rows;
