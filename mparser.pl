@@ -677,13 +677,17 @@ sub format_price {
 }
 
 sub get_history {
-    my ($title, $year) = @_;
+    my ($title, $year, $mint) = @_;
     return undef unless $dbh;
     return undef unless $title;
-    my $rows = $dbh->selectall_arrayref(
-        "SELECT price, condition, lot_id, auction_id, parsed_at, mint FROM lots WHERE title = ? AND year = ? AND price > 0 ORDER BY parsed_at DESC LIMIT 20",
-        {}, $title, $year
-    );
+    my $sql = "SELECT price, condition, lot_id, auction_id, parsed_at, mint FROM lots WHERE title = ? AND year = ? AND price > 0";
+    my @bind = ($title, $year);
+    if ($mint) {
+        $sql .= " AND mint = ?";
+        push @bind, $mint;
+    }
+    $sql .= " ORDER BY parsed_at DESC LIMIT 20";
+    my $rows = $dbh->selectall_arrayref($sql, {}, @bind);
     return undef unless $rows && @$rows > 0;
     my $count = scalar @$rows;
     my $sum = 0;
@@ -938,7 +942,7 @@ foreach my $lot (@lots) {
         next;
     }
 
-    my $hist = get_history($title, $lot_year);
+    my $hist = get_history($title, $lot_year, $mint);
     my $hist_html = '<td class="price-cell">—</td>';
     my $detail_row = '';
     if ($hist) {
