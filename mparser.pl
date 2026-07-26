@@ -8,6 +8,7 @@ use HTML::TreeBuilder::XPath;
 use URI;
 use Getopt::Long;
 use Text::CSV;
+use DBI;
 
 
 
@@ -428,7 +429,7 @@ my $html = <<'HTML_HEADER';
             margin: 0;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 8px;
@@ -453,23 +454,30 @@ my $html = <<'HTML_HEADER';
             justify-content: space-between;
             flex-wrap: wrap;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .table-wrap {
+            overflow-x: auto;
             margin-top: 20px;
         }
-        th {
+        .table-wrap table {
+            min-width: 1100px;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .table-wrap th {
             background-color: #4CAF50;
             color: white;
-            padding: 12px 15px;
+            padding: 10px 10px;
             text-align: left;
             font-weight: bold;
             position: sticky;
             top: 0;
+            white-space: nowrap;
         }
-        td {
-            padding: 12px 15px;
+        .table-wrap td {
+            padding: 8px 10px;
             border-bottom: 1px solid #ddd;
+            white-space: nowrap;
         }
         .trgreen {
             background-color: #f0fff0;
@@ -484,7 +492,6 @@ my $html = <<'HTML_HEADER';
         .link-cell a {
             color: #2196F3;
             text-decoration: none;
-            word-break: break-all;
         }
         .link-cell a:hover {
             text-decoration: underline;
@@ -493,6 +500,13 @@ my $html = <<'HTML_HEADER';
         .price-cell {
             font-weight: bold;
             color: #e53935;
+            white-space: nowrap;
+        }
+        .price-cell small {
+            font-weight: normal;
+            color: #888;
+            display: block;
+            font-size: 11px;
         }
         .id-cell {
             font-family: monospace;
@@ -519,6 +533,84 @@ my $html = <<'HTML_HEADER';
             color: #e53935;
             font-weight: bold;
         }
+        .hist-section {
+            margin-top: 30px;
+            border-top: 2px solid #4CAF50;
+            padding-top: 20px;
+        }
+        .hist-section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .hist-section table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .hist-section th {
+            background-color: #607D8B;
+            color: white;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .hist-section td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .hist-section tr:hover {
+            background-color: #f5f5f5;
+        }
+        .hist-section .hist-title {
+            color: #333;
+            font-weight: bold;
+        }
+        .hist-section .hist-price {
+            font-weight: bold;
+            color: #e53935;
+        }
+        .hist-detail {
+            display: none;
+        }
+        .hist-detail td {
+            padding: 0;
+            border: none;
+            background: #fafafa;
+        }
+        .hist-detail .hist-inner {
+            padding: 10px 20px 10px 40px;
+        }
+        .hist-detail .hist-inner table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .hist-detail .hist-inner th {
+            background: #cfd8dc;
+            color: #333;
+            padding: 5px 10px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .hist-detail .hist-inner td {
+            padding: 4px 10px;
+            border-bottom: 1px solid #eee;
+            background: none;
+        }
+        .lot-row {
+            cursor: pointer;
+        }
+        .lot-row .expand-icon {
+            font-size: 10px;
+            color: #999;
+            margin-left: 4px;
+        }
+        .lot-row.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
         .footer {
             margin-top: 30px;
             text-align: center;
@@ -528,11 +620,11 @@ my $html = <<'HTML_HEADER';
             padding-top: 15px;
         }
         @media (max-width: 768px) {
-            table {
-                font-size: 14px;
+            .table-wrap table {
+                font-size: 12px;
             }
-            th, td {
-                padding: 8px 10px;
+            .table-wrap th, .table-wrap td {
+                padding: 6px 6px;
             }
             .container {
                 padding: 10px;
@@ -550,18 +642,20 @@ my $html = <<'HTML_HEADER';
 HTML_HEADER
 
 $html .= <<"INFO_BAR";
+        <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th>ID лота</th>
+                    <th>ID</th>
                     <th>Название</th>
                     <th>Год</th>
                     <th>Металл</th>
                     <th>Чеканка</th>
-                    <th>Состояние</th>
+                    <th>Сохр.</th>
                     <th>Ставки</th>
                     <th>Лидер</th>
                     <th>Текущая цена</th>
+                    <th>Средняя цена</th>
                     <th>Окончание</th>
                     <th>Ссылка</th>
                 </tr>
@@ -571,6 +665,55 @@ INFO_BAR
 
 
 my $verbose=1;
+my $db_file = 'coins_stats.db';
+my $dbh;
+if (-e $db_file) {
+    $dbh = DBI->connect("dbi:SQLite:dbname=$db_file", "", "", {
+        RaiseError => 0,
+        AutoCommit => 1,
+        sqlite_unicode => 1,
+    });
+    print "Подключена база исторических цен: $db_file\n" if $verbose;
+}
+
+sub format_price {
+    my ($n) = @_;
+    $n = int($n + 0.5);
+    my $s = reverse $n;
+    $s =~ s/(\d{3})(?=\d)/$1 /g;
+    return scalar reverse $s;
+}
+
+sub get_history {
+    my ($title, $year) = @_;
+    return undef unless $dbh;
+    return undef unless $title;
+    my $rows = $dbh->selectall_arrayref(
+        "SELECT price, condition, lot_id, auction_id, parsed_at FROM lots WHERE title = ? AND year = ? AND price > 0 ORDER BY parsed_at DESC LIMIT 20",
+        {}, $title, $year
+    );
+    return undef unless $rows && @$rows > 0;
+    my $count = scalar @$rows;
+    my $sum = 0;
+    my $min_price = 9e999;
+    my $max_price = 0;
+    for my $r (@$rows) {
+        my $p = $r->[0];
+        $sum += $p;
+        $min_price = $p if $p < $min_price;
+        $max_price = $p if $p > $max_price;
+    }
+    return {
+        count => $count,
+        avg   => $sum / $count,
+        min   => $min_price,
+        max   => $max_price,
+        last  => $rows->[0]->[0],
+        last_auction => $rows->[0]->[3],
+        last_cond    => $rows->[0]->[1],
+        rows  => $rows,
+    };
+}
 
 # Создаем User-Agent с полным набором заголовков
 my $ua = LWP::UserAgent->new;
@@ -664,6 +807,7 @@ print "Найдено лотов: " . scalar(@lots) . "\n\n";
 
 my $found_count = 0;
 my $skipped_count = 0;
+my $hist_row_id = 0;
 
 
 
@@ -802,7 +946,40 @@ foreach my $lot (@lots) {
         next;
     }
 
-
+    my $hist = get_history($title, $lot_year);
+    my $hist_html = '<td class="price-cell">—</td>';
+    my $detail_row = '';
+    if ($hist) {
+        $hist_row_id++;
+        my $hid = "hist-$hist_row_id";
+        $hist_html = sprintf(
+            '<td class="price-cell">%s ₽ <span class="expand-icon">▶</span><br><small>%d шт., ср. %s ₽</small></td>',
+            format_price($hist->{last}),
+            $hist->{count},
+            format_price(int($hist->{avg} + 0.5)),
+        );
+        $detail_row .= qq{<tr class="hist-detail" id="$hid">\n};
+        $detail_row .= qq{    <td colspan="11">\n};
+        $detail_row .= qq{        <div class="hist-inner">\n};
+        $detail_row .= qq{            <table>\n};
+        $detail_row .= qq{                <tr>\n};
+        $detail_row .= qq{                    <th>Сохранность</th>\n};
+        $detail_row .= qq{                    <th>Цена</th>\n};
+        $detail_row .= qq{                    <th>Аукцион</th>\n};
+        $detail_row .= qq{                </tr>\n};
+        for my $r (@{$hist->{rows}}) {
+            my ($price, $cond, $l_id, $auc_id) = @$r;
+            $detail_row .= qq{                <tr>\n};
+            $detail_row .= qq{                    <td>$cond</td>\n};
+            $detail_row .= qq{                    <td class="hist-price">} . format_price($price) . qq{ ₽</td>\n};
+            $detail_row .= qq{                    <td><a href="https://www.wolmar.ru/auction/$auc_id/$l_id" target="_blank">#$auc_id</a></td>\n};
+            $detail_row .= qq{                </tr>\n};
+        }
+        $detail_row .= qq{            </table>\n};
+        $detail_row .= qq{        </div>\n};
+        $detail_row .= qq{    </td>\n};
+        $detail_row .= qq{</tr>\n};
+    }
 
     # Вывод информации
     print "ID лота: $lot_id\n";
@@ -816,6 +993,10 @@ foreach my $lot (@lots) {
     print "Лидер: $seller \n";
     
     print "Текущая цена: $price\n";
+    if ($hist) {
+        my $avg_int = int($hist->{avg} + 0.5);
+        print "История: $hist->{count} продаж, ср. ${avg_int}₽, последняя $hist->{last}₽\n";
+    }
     print "Окончание: $end_time\n";
     print "-" x 60 . "\n";
 
@@ -823,13 +1004,20 @@ foreach my $lot (@lots) {
     $bids_class = 'bids-medium' if $bids >= 1 && $bids <= 5;
     $bids_class = 'bids-high' if $bids > 5;
 
-   if ($seller ne 'vjpcoins' && $price<3000) {
-      $html .= "<tr class=\"trred\">\n";
-   } elsif ($seller eq 'vjpcoins') {
-     $html .= "<tr class=\"trgreen\">\n";
-   } else {
-    $html .= "<tr>\n";
-   }
+    my $row_class = '';
+    if ($seller ne 'vjpcoins' && $price<3000) {
+        $row_class = 'trred';
+    } elsif ($seller eq 'vjpcoins') {
+        $row_class = 'trgreen';
+    }
+    if ($detail_row) {
+        $row_class .= ' lot-row';
+    }
+    if ($row_class) {
+        $html .= "<tr class=\"$row_class\">\n";
+    } else {
+        $html .= "<tr>\n";
+    }
 
     $html .= "    <td class=\"id-cell\">$lot_id</td>\n";
     $html .= "    <td>$title</td>\n";
@@ -840,13 +1028,47 @@ foreach my $lot (@lots) {
     $html .= "    <td class=\"$bids_class\">$bids</td>\n";
     $html .= "    <td>$seller</td>\n";
     $html .= "    <td class=\"price-cell\">$price ₽</td>\n";
+    $html .= "    $hist_html\n";
     $html .= "    <td>$end_time</td>\n";
     $html .= "    <td class=\"link-cell\"><a href=\"$link\" target=\"_blank\">🔗 Перейти</a></td>\n";
+    $html .= "</tr>\n";
+    if ($detail_row) {
+        $html .= $detail_row;
+    }
 
 
 }
 
 $tree->delete;
+
+$html .= "        </tbody>\n";
+$html .= "    </table>\n";
+$html .= "    </div>\n";
+
+$html .= "        <div class=\"footer\">\n";
+$html .= "            Сгенерировано Wolmar Parser\n";
+$html .= "        </div>\n";
+$html .= "    </div>\n";
+$html .= "<script>\n";
+$html .= "document.addEventListener('DOMContentLoaded', function() {\n";
+$html .= "    var rows = document.querySelectorAll('tr.lot-row');\n";
+$html .= "    for (var i = 0; i < rows.length; i++) {\n";
+$html .= "        rows[i].addEventListener('click', function(e) {\n";
+$html .= "            if (e.target.closest('a')) return;\n";
+$html .= "            var detail = this.nextElementSibling;\n";
+$html .= "            if (detail && detail.classList.contains('hist-detail')) {\n";
+$html .= "                var isVisible = detail.style.display === 'table-row';\n";
+$html .= "                detail.style.display = isVisible ? 'none' : 'table-row';\n";
+$html .= "                var icon = this.querySelector('.expand-icon');\n";
+$html .= "                if (icon) icon.textContent = isVisible ? '▶' : '▼';\n";
+$html .= "            }\n";
+$html .= "        });\n";
+$html .= "    }\n";
+$html .= "});\n";
+$html .= "</script>\n";
+$html .= "</body>\n";
+$html .= "</html>\n";
+
 print "\nГотово! ";
 print "Найдено новых лотов: $found_count. ";
 print "Пропущено (уже в коллекции): $skipped_count. ";
@@ -855,5 +1077,12 @@ print "\n";
 print FH $html;
 close FH;
 
-system("open $filename");
+if ($^O eq 'MSWin32' || $^O eq 'Windows_NT') {
+    system("start $filename");
+} elsif ($^O eq 'darwin') {
+    system("open $filename");
+} else {
+    system("xdg-open $filename");
+}
+
 
