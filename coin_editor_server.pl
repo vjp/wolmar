@@ -42,6 +42,15 @@ my $d = HTTP::Daemon->new(
 print "Редактор конфига запущен: http://127.0.0.1:$port\n";
 print "Нажмите Ctrl+C для остановки.\n";
 
+my $url = "http://127.0.0.1:$port";
+if ($^O eq 'MSWin32' || $^O eq 'Windows_NT') {
+    system("start $url");
+} elsif ($^O eq 'darwin') {
+    system("open $url");
+} else {
+    system("xdg-open $url");
+}
+
 while (my $c = $d->accept) {
     while (my $r = $c->get_request) {
         my $path = $r->uri->path;
@@ -179,6 +188,16 @@ sub editor_html {
             background: #f0fff0;
         }
         tr:hover { background: #f9f9f9; }
+        tr.inactive {
+            background: #fafafa;
+            opacity: 0.65;
+        }
+        td input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+            transform: scale(1.2);
+        }
+        td.center { text-align: center; }
         .actions {
             margin-top: 15px;
             display: flex;
@@ -280,13 +299,13 @@ sub editor_html {
                 if (!name) return;
                 if (cat.type === 'year_mint') {
                     const year = inputs[1].value.trim();
-                    const mint = inputs[2].value.trim();
+                    const active = inputs[3].checked;
                     if (!year) return;
                     if (!result[name]) result[name] = {};
-                    result[name][year] = mint;
+                    result[name][year] = active ? inputs[2].value.trim() : null;
                 } else {
-                    const value = inputs[1].value.trim();
-                    result[name] = value;
+                    const active = inputs[2].checked;
+                    result[name] = active ? inputs[1].value.trim() : null;
                 }
             });
             return result;
@@ -304,30 +323,46 @@ sub editor_html {
             const data = config[activeCat] || {};
             let html = '';
             if (cat.type === 'year_mint') {
-                html += '<table><thead><tr><th>Название</th><th>Год</th><th>Чеканка</th><th style="width:40px"></th></tr></thead><tbody>';
+                html += '<table><thead><tr><th>Название</th><th>Год</th><th>Чеканка</th><th class="center">Акт.</th><th></th></tr></thead><tbody>';
                 for (const [name, years] of Object.entries(data)) {
                     for (const [year, mint] of Object.entries(years)) {
-                        html += '<tr>' +
+                        const active = mint !== null && mint !== undefined;
+                        html += '<tr class="' + (active ? '' : 'inactive') + '">' +
                             '<td><input value="' + esc(name) + '"></td>' +
                             '<td><input value="' + esc(year) + '"></td>' +
-                            '<td><input value="' + esc(mint) + '"></td>' +
+                            '<td><input class="value-input" value="' + (active ? esc(mint) : '') + '" ' + (active ? '' : 'disabled') + '></td>' +
+                            '<td class="center"><input type="checkbox" ' + (active ? 'checked' : '') + ' onchange="toggleActive(this)"></td>' +
                             '<td><button class="danger" onclick="deleteRow(this)">×</button></td>' +
                             '</tr>';
                     }
                 }
                 html += '</tbody></table>';
             } else {
-                html += '<table><thead><tr><th>Название</th><th>Год / Значение</th><th style="width:40px"></th></tr></thead><tbody>';
+                html += '<table><thead><tr><th>Название</th><th>Год / Значение</th><th class="center">Акт.</th><th></th></tr></thead><tbody>';
                 for (const [name, value] of Object.entries(data)) {
-                    html += '<tr>' +
+                    const active = value !== null && value !== undefined;
+                    html += '<tr class="' + (active ? '' : 'inactive') + '">' +
                         '<td><input value="' + esc(name) + '"></td>' +
-                        '<td><input value="' + esc(value) + '"></td>' +
+                        '<td><input class="value-input" value="' + (active ? esc(value) : '') + '" ' + (active ? '' : 'disabled') + '></td>' +
+                        '<td class="center"><input type="checkbox" ' + (active ? 'checked' : '') + ' onchange="toggleActive(this)"></td>' +
                         '<td><button class="danger" onclick="deleteRow(this)">×</button></td>' +
                         '</tr>';
                 }
                 html += '</tbody></table>';
             }
             document.getElementById('editor').innerHTML = html;
+        }
+
+        function toggleActive(chk) {
+            const row = chk.closest('tr');
+            row.classList.toggle('inactive', !chk.checked);
+            const valueInput = row.querySelector('input.value-input');
+            if (valueInput) {
+                valueInput.disabled = !chk.checked;
+                if (chk.checked && valueInput.value === '') {
+                    valueInput.value = '-';
+                }
+            }
         }
 
         function addRow() {
@@ -352,6 +387,8 @@ sub editor_html {
             }
             render();
         }
+
+        window.toggleActive = toggleActive;
 
         async function save() {
             config[activeCat] = getDataFromUI();

@@ -545,6 +545,7 @@ foreach my $lot (@lots) {
     $title=~s/ Ильин.*//;
 
     $price=~s/ //g;
+    # Значение null в coins_config.json означает, что позиция временно выключена из поиска
     if ($ex_md->{$title}->{$lot_year} && ($mint!~/$ex_md->{$title}->{$lot_year}/) && $price<10000 && $metal eq 'Cu' && $lot_condition!~/(AU|MS) (\d+|Det)/) {
         if ($ex_md->{$title}->{$lot_year} ne '-'  && !$mint) {
             next
