@@ -677,7 +677,7 @@ $html .= "        </div>\n";
 $html .= "    </div>\n";
 $html .= "<script>\n";
 $html .= "document.addEventListener('DOMContentLoaded', function() {\n";
-$html .= "    var rows = document.querySelectorAll('tr.lot-row');\n";
+$html .= "    var rows = document.querySelectorAll('tr[data-url]');\n";
 $html .= "    for (var i = 0; i < rows.length; i++) {\n";
 $html .= "        rows[i].addEventListener('click', function(e) {\n";
 $html .= "            if (e.target.closest('.clickable-cell')) {\n";
