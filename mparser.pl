@@ -591,6 +591,7 @@ foreach my $lot (@lots) {
         $detail_row .= qq{                    <th>Сохранность</th>\n};
         $detail_row .= qq{                    <th>МД</th>\n};
         $detail_row .= qq{                    <th>Цена</th>\n};
+        $detail_row .= qq{                    <th>Дата</th>\n};
         $detail_row .= qq{                    <th>Аукцион</th>\n};
         $detail_row .= qq{                </tr>\n};
         for my $r (@{$hist->{rows}}) {
@@ -599,6 +600,8 @@ foreach my $lot (@lots) {
             $detail_row .= qq{                    <td>$cond</td>\n};
             $detail_row .= qq{                    <td>$h_mint</td>\n};
             $detail_row .= qq{                    <td class="hist-price">} . format_price($price) . qq{ ₽</td>\n};
+            my $date = $parsed_at ? substr($parsed_at, 0, 10) : '';
+            $detail_row .= qq{                    <td>$date</td>\n};
             $detail_row .= qq{                    <td><a href="https://www.wolmar.ru/auction/$auc_id/$l_id" target="_blank">#$auc_id</a></td>\n};
             $detail_row .= qq{                </tr>\n};
         }
