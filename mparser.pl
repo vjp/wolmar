@@ -105,11 +105,11 @@ my $html = <<'HTML_HEADER';
         tr:hover {
             background-color: #f1f1f1;
         }
-        .link-cell a {
+        .clickable-cell {
+            cursor: pointer;
             color: #2196F3;
-            text-decoration: none;
         }
-        .link-cell a:hover {
+        .clickable-cell:hover {
             text-decoration: underline;
             color: #0d8bf2;
         }
@@ -273,7 +273,6 @@ $html .= <<"INFO_BAR";
                     <th>Текущая цена</th>
                     <th>Средняя цена</th>
                     <th>Окончание</th>
-                    <th>Ссылка</th>
                 </tr>
             </thead>
             <tbody>
@@ -637,13 +636,13 @@ foreach my $lot (@lots) {
         $row_class .= ' lot-row';
     }
     if ($row_class) {
-        $html .= "<tr class=\"$row_class\">\n";
+        $html .= "<tr class=\"$row_class\" data-url=\"$link\">\n";
     } else {
-        $html .= "<tr>\n";
+        $html .= "<tr data-url=\"$link\">\n";
     }
 
-    $html .= "    <td class=\"id-cell\">$lot_id</td>\n";
-    $html .= "    <td>$title</td>\n";
+    $html .= "    <td class=\"id-cell clickable-cell\">$lot_id</td>\n";
+    $html .= "    <td class=\"clickable-cell\">$title</td>\n";
     $html .= "    <td class=\"year-cell\">$lot_year</td>\n";
     $html .= "    <td class=\"metal-cell\">$metal</td>\n";
     $html .= "    <td>$mint</td>\n";
@@ -653,7 +652,6 @@ foreach my $lot (@lots) {
     $html .= "    <td class=\"price-cell\">$price ₽</td>\n";
     $html .= "    $hist_html\n";
     $html .= "    <td>$end_time</td>\n";
-    $html .= "    <td class=\"link-cell\"><a href=\"$link\" target=\"_blank\">🔗 Перейти</a></td>\n";
     $html .= "</tr>\n";
     if ($detail_row) {
         $html .= $detail_row;
@@ -677,7 +675,11 @@ $html .= "document.addEventListener('DOMContentLoaded', function() {\n";
 $html .= "    var rows = document.querySelectorAll('tr.lot-row');\n";
 $html .= "    for (var i = 0; i < rows.length; i++) {\n";
 $html .= "        rows[i].addEventListener('click', function(e) {\n";
-$html .= "            if (e.target.closest('a')) return;\n";
+$html .= "            if (e.target.closest('.clickable-cell')) {\n";
+$html .= "                var url = this.getAttribute('data-url');\n";
+$html .= "                if (url) window.open(url, '_blank');\n";
+$html .= "                return;\n";
+$html .= "            }\n";
 $html .= "            var detail = this.nextElementSibling;\n";
 $html .= "            if (detail && detail.classList.contains('hist-detail')) {\n";
 $html .= "                var isVisible = detail.style.display === 'table-row';\n";
