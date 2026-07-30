@@ -71,11 +71,9 @@ my $html = <<'HTML_HEADER';
             flex-wrap: wrap;
         }
         .table-wrap {
-            overflow-x: auto;
             margin-top: 20px;
         }
         .table-wrap table {
-            min-width: 1100px;
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
@@ -93,6 +91,13 @@ my $html = <<'HTML_HEADER';
         .table-wrap td {
             padding: 8px 10px;
             border-bottom: 1px solid #ddd;
+        }
+        .table-wrap td.id-cell,
+        .table-wrap td.year-cell,
+        .table-wrap td.metal-cell,
+        .table-wrap td.status-cell,
+        .table-wrap td.price-cell,
+        .table-wrap td[class*="bids-"] {
             white-space: nowrap;
         }
         .trgreen {
