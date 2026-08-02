@@ -349,11 +349,123 @@ $ua->default_header('DNT' => '1');
 $ua->default_header('Connection' => 'keep-alive');
 $ua->timeout(30);
 
+sub ensure_past_auctions {
+    my ($content, $dbh) = @_;
+
+    my @vip_ids = ($content =~ m{<a href="/auction/(\d+)">Аукцион VIP №\d+</a>}g);
+    my @std_ids = ($content =~ m{<a href="/auction/(\d+)">Аукцион Standart №\d+</a>}g);
+
+    my @past = ();
+    push @past, $vip_ids[1] if defined $vip_ids[1];
+    push @past, $std_ids[1] if defined $std_ids[1];
+
+    for my $aid (@past) {
+        my $exists = $dbh->selectrow_array("SELECT COUNT(*) FROM lots WHERE auction_id = ?", {}, $aid);
+        if ($exists) {
+            print "Аукцион #$aid уже есть в статистике\n";
+            next;
+        }
+        print "Аукцион #$aid отсутствует в статистике, добавляем...\n";
+        my $added = parse_auction_into_db($aid, $dbh);
+        print "  Добавлено лотов: $added\n";
+    }
+}
+
+sub parse_auction_into_db {
+    my ($aid, $dbh) = @_;
+
+    my @categories = (
+        { slug => 'monety-rossii-do-1917-med',      name => 'md' },
+        { slug => 'monety-rossii-do-1917-serebro',   name => 'sr' },
+        { slug => 'monety-rsfsr-sssr-rossii',        name => 'ss' },
+    );
+
+    my $added = 0;
+
+    for my $cat (@categories) {
+        my $url = "https://www.wolmar.ru/auction/$aid/$cat->{slug}?all=1";
+        print "  Загружаю: $url\n" if $verbose;
+
+        my $response = $ua->get($url);
+        unless ($response->is_success) {
+            print "  Ошибка: " . $response->status_line . "\n";
+            next;
+        }
+
+        my $tree = HTML::TreeBuilder::XPath->new;
+        $tree->parse($response->decoded_content);
+        $tree->eof;
+
+        my @lots = $tree->findnodes('//tr[@lot_id]');
+        print "  Найдено лотов в $cat->{name}: " . scalar(@lots) . "\n" if $verbose;
+
+        for my $lot (@lots) {
+            my @cells = $lot->findnodes('.//td');
+            next unless @cells >= 10;
+
+            my $lot_id = $lot->attr('lot_id') || '';
+
+            my $title_element = $cells[1]->findnodes('.//a[@class="title lot"]')->[0];
+            my $raw_title = $title_element ? $title_element->as_trimmed_text : '';
+            next unless $raw_title;
+
+            my $link = '';
+            if ($title_element) {
+                my $href = $title_element->attr('href');
+                $link = URI->new_abs($href, $url)->as_string if $href;
+            }
+
+            my $year = $cells[2]->as_trimmed_text;
+            my $mint = $cells[3]->as_trimmed_text;
+            my $metal = $cells[4]->as_trimmed_text;
+            my $condition = $cells[5]->as_trimmed_text;
+            my $seller = $cells[6]->as_trimmed_text;
+            my $bids_text = $cells[7]->as_trimmed_text;
+            my $price_text = $cells[8]->as_trimmed_text;
+            my $end_time = $cells[9]->as_trimmed_text;
+
+            my $title = clean_title($raw_title);
+            my $price = clean_price($price_text);
+            my $bids = $bids_text =~ /^\d+$/ ? int($bids_text) : 0;
+
+            my $inserted = $dbh->do(
+                "INSERT OR IGNORE INTO lots (auction_id, lot_id, title, year, metal, mint, condition, price, seller, bids, url, raw_title, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                {},
+                $aid, $lot_id, $title, $year, $metal, $mint, $condition,
+                $price, $seller, $bids, $link, $raw_title, $cat->{name}
+            );
+            $added++ if $inserted && $inserted > 0;
+        }
+
+        $tree->delete;
+    }
+
+    return $added;
+}
+
+sub clean_title {
+    my ($t) = @_;
+    $t =~ s/ R.*//;
+    $t =~ s/ Петров.*//;
+    $t =~ s/ Ильин.*//;
+    $t =~ s/\s+$//;
+    return $t;
+}
+
+sub clean_price {
+    my ($p) = @_;
+    $p =~ s/[^\d.,]//g;
+    $p =~ s/,/./;
+    return $p eq '' ? 0 : 0 + $p;
+}
+
 
 
 my $response = $ua->get("https://www.wolmar.ru/");
 my ($aid)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион VIP №\d+<\/a>/);
 my ($aids)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион Standart №\d+<\/a>/);
+
+ensure_past_auctions($response->decoded_content, $dbh) if $dbh;
 
 
 if ($ARGV[0]) {
