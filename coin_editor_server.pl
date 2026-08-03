@@ -8,7 +8,7 @@ use HTTP::Status;
 use JSON::PP;
 use Encode qw(encode_utf8);
 
-my $port = $ARGV[0] || 8080;
+my $port = $ARGV[0] || 8081;
 my $config_file = 'coins_config.json';
 
 sub load_config_raw {
@@ -382,7 +382,7 @@ sub editor_html {
             const row = btn.closest('tr');
             const inputs = row.querySelectorAll('input');
             const name = inputs[0].value.trim();
-            if (name && config[activeCat][name]) {
+            if (name && Object.prototype.hasOwnProperty.call(config[activeCat], name)) {
                 delete config[activeCat][name];
             }
             render();
