@@ -240,7 +240,7 @@ sub editor_html {
         <div id="editor"></div>
         <div class="actions">
             <button id="saveBtn" class="primary">Сохранить</button>
-            <button id="addRow">Добавить строку</button>
+            <button id="addRow">Добавить монету</button>
             <span id="status" class="status"></span>
         </div>
         <div class="hint">
@@ -367,12 +367,20 @@ sub editor_html {
 
         function addRow() {
             config[activeCat] = getDataFromUI();
+            const name = prompt('Название монеты:', '');
+            if (!name) return;
+            const trimmed = name.trim();
+            if (!trimmed) return;
             const cat = categories.find(c => c.key === activeCat);
             if (cat.type === 'year_mint') {
-                if (!config[activeCat]['']) config[activeCat][''] = {};
-                config[activeCat][''][''] = '';
+                if (!config[activeCat][trimmed]) config[activeCat][trimmed] = {};
+                config[activeCat][trimmed][''] = '';
             } else {
-                config[activeCat][''] = '';
+                if (Object.prototype.hasOwnProperty.call(config[activeCat], trimmed)) {
+                    alert('Монета с таким названием уже существует');
+                    return;
+                }
+                config[activeCat][trimmed] = '';
             }
             render();
         }
