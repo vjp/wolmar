@@ -382,8 +382,19 @@ sub editor_html {
             const row = btn.closest('tr');
             const inputs = row.querySelectorAll('input');
             const name = inputs[0].value.trim();
-            if (name && Object.prototype.hasOwnProperty.call(config[activeCat], name)) {
-                delete config[activeCat][name];
+            const cat = categories.find(c => c.key === activeCat);
+            if (cat.type === 'year_mint') {
+                const year = inputs[1].value.trim();
+                if (name && year && config[activeCat][name]) {
+                    delete config[activeCat][name][year];
+                    if (Object.keys(config[activeCat][name]).length === 0) {
+                        delete config[activeCat][name];
+                    }
+                }
+            } else {
+                if (name && Object.prototype.hasOwnProperty.call(config[activeCat], name)) {
+                    delete config[activeCat][name];
+                }
             }
             render();
         }
