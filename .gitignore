@@ -1,3 +1,6 @@
 # Generated runtime outputs
 au*.html
 coins_stats.db
+.DS_Store
+dbtest.pl
+test.db
