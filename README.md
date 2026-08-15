@@ -7,6 +7,8 @@
 | Файл | Назначение |
 |---|---|
 | `mparser.pl` | Основной парсер. Скачивает текущие аукционы VIP и Standart (секции «Монеты России до 1917 — серебро», «— медь», «Монеты РСФСР/СССР/России»), фильтрует лоты по `coins_config.json` и формирует HTML-отчёт `au<ID>.html` |
+| `numizmatik_vip.pl` | Парсер VIP-распродажи магазина numizmatik.ru. Берёт ссылку из письма (Gmail IMAP) или из `--url`, фильтрует товары по тому же `coins_config.json` и формирует HTML-отчёт `numizmatik_vip.html` |
+| `numizmatik_vip.conf.json.example` | Пример конфигурации IMAP для `numizmatik_vip.pl` (скопировать в `numizmatik_vip.conf.json` и вписать пароль приложения) |
 | `stats_builder.pl` | Собирает историю цен по прошедшим аукционам в базу `coins_stats.db` (SQLite) |
 | `coin_editor_server.pl` | Веб-редактор конфига `coins_config.json` с автоматическим открытием в браузере |
 | `coins_config.json` | Список известных монет: годы, чеканки и значения для фильтрации |
@@ -56,6 +58,44 @@ perl coin_editor_server.pl 9000   # другой порт
 ```
 
 Открывается в браузере автоматически. Изменения сохраняются напрямую в `coins_config.json`.
+
+### Парсинг VIP-распродажи numizmatik.ru
+
+Скрипт `numizmatik_vip.pl` обрабатывает страницу распродажи магазина «Клуб Нумизмат» (ссылка приходит в письме) и ищет монеты по тому же `coins_config.json`, что и `mparser.pl`.
+
+Два режима:
+
+```bash
+# 1. По ссылке из письма (вручную)
+perl numizmatik_vip.pl --url "https://www.numizmatik.ru/shopcoins/?page=viporder&id=...&sing=..."
+
+# 2. Автоматически — взять ссылку из последнего письма на Gmail
+cp numizmatik_vip.conf.json.example numizmatik_vip.conf.json
+# вписать username и password (пароль приложения Gmail) в numizmatik_vip.conf.json
+perl numizmatik_vip.pl --email
+```
+
+Опции:
+
+| Опция | Описание |
+|---|---|
+| `--url URL` | Ссылка на страницу VIP-распродажи |
+| `--email` | Взять ссылки из писем (нужен `numizmatik_vip.conf.json`) |
+| `--count N` | Сколько последних писем обработать (по умолчанию 1) |
+| `--config FILE` | Альтернативный конфиг IMAP |
+| `--output FILE` | Имя выходного HTML-файла (по умолчанию `numizmatik_vip.html`) |
+| `--no-open` | Не открывать отчёт в браузере |
+| `--verbose` / `--no-verbose` | Подробный / тихий вывод |
+
+Отчёт содержит две таблицы: **подходящие монеты** (прошли фильтр `coins_config.json` по году, чеканке, цене и состоянию) и **близкие совпадения** (монеты из конфига, но дороже ценового порога или в высокой сохранности — с указанием причины).
+
+Для режима `--email` нужен **пароль приложения** Gmail (не основной пароль): Google-аккаунт → Безопасность → Двухэтапная аутентификация → Пароли приложений.
+
+Для автозапуска по будням можно добавить в crontab, например (по будням в 09:30):
+
+```cron
+30 9 * * 1-5 cd /path/to/wolmar && perl -Ilocal/lib/perl5 numizmatik_vip.pl --email --no-open >> numizmatik_vip.log 2>&1
+```
 
 ## Управление конфигом монет
 

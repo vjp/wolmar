@@ -1,6 +1,13 @@
 # Generated runtime outputs
 au*.html
+numizmatik_vip.html
 coins_stats.db
 .DS_Store
 dbtest.pl
 test.db
+
+# Local dependencies
+local/
+
+# Private config
+numizmatik_vip.conf.json

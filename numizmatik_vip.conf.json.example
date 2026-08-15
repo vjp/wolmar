@@ -1,0 +1,11 @@
+{
+  "imap": {
+    "server": "imap.gmail.com",
+    "port": 993,
+    "username": "utenkov.i@gmail.com",
+    "password": "ВАШ_ПАРОЛЬ_ПРИЛОЖЕНИЯ",
+    "folder": "INBOX",
+    "from": "numizmatik.ru",
+    "max_scan": 100
+  }
+}
