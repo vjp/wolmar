@@ -346,18 +346,59 @@ $ua->default_header('Accept' => 'text/html,application/xhtml+xml,application/xml
 $ua->default_header('Accept-Language' => 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7');
 $ua->default_header('Referer' => 'https://www.wolmar.ru/');
 $ua->default_header('DNT' => '1');
-$ua->default_header('Connection' => 'keep-alive');
+$ua->default_header('Connection' => 'close');
 $ua->timeout(30);
 
-sub ensure_past_auctions {
-    my ($content, $dbh) = @_;
+sub fetch_url {
+    my ($url, $retries) = @_;
+    $retries //= 5;
+    my $last_error;
+    for my $attempt (1 .. $retries) {
+        my $response = $ua->get($url);
+        return $response if $response->is_success;
+        $last_error = $response->status_line;
+        print "  Попытка $attempt/$retries не удалась для $url: $last_error\n" if $verbose && $attempt < $retries;
+        if ($attempt < $retries) {
+            my $delay = 5 + int(rand(3)) + $attempt * 3;
+            sleep($delay);
+        }
+    }
+    die "Ошибка загрузки страницы $url: $last_error";
+}
 
-    my @vip_ids = ($content =~ m{<a href="/auction/(\d+)">Аукцион VIP №\d+</a>}g);
-    my @std_ids = ($content =~ m{<a href="/auction/(\d+)">Аукцион Standart №\d+</a>}g);
+sub extract_current_auction_ids {
+    my ($content) = @_;
+    my ($aid) = ($content =~ m{<a href="/auction/(\d+)">Аукцион VIP №\d+</a>});
+    my ($aids) = ($content =~ m{<a href="/auction/(\d+)">Аукцион Standart №\d+</a>});
+    return ($aid, $aids);
+}
+
+sub extract_past_auction_ids {
+    my ($content) = @_;
+    my (@vip, @standart);
+
+    if ($content =~ m{<h2>VIP аукционы:</h2>\s*<div[^>]*>(.*?)</div>}s) {
+        my $box = $1;
+        while ($box =~ m{/auction/(\d+)}g) {
+            push @vip, $1;
+        }
+    }
+    if ($content =~ m{<h2>Standart аукционы:</h2>\s*<div[^>]*>(.*?)</div>}s) {
+        my $box = $1;
+        while ($box =~ m{/auction/(\d+)}g) {
+            push @standart, $1;
+        }
+    }
+
+    return (\@vip, \@standart);
+}
+
+sub ensure_past_auctions {
+    my ($vip_ids, $std_ids, $dbh) = @_;
 
     my @past = ();
-    push @past, $vip_ids[1] if defined $vip_ids[1];
-    push @past, $std_ids[1] if defined $std_ids[1];
+    push @past, $vip_ids->[1] if $vip_ids && @$vip_ids > 1;
+    push @past, $std_ids->[1] if $std_ids && @$std_ids > 1;
 
     for my $aid (@past) {
         my $exists = $dbh->selectrow_array("SELECT COUNT(*) FROM lots WHERE auction_id = ?", {}, $aid);
@@ -386,9 +427,10 @@ sub parse_auction_into_db {
         my $url = "https://www.wolmar.ru/auction/$aid/$cat->{slug}?all=1";
         print "  Загружаю: $url\n" if $verbose;
 
-        my $response = $ua->get($url);
-        unless ($response->is_success) {
-            print "  Ошибка: " . $response->status_line . "\n";
+        my $response;
+        eval { $response = fetch_url($url); };
+        if ($@) {
+            print "  Ошибка: $@\n";
             next;
         }
 
@@ -438,6 +480,7 @@ sub parse_auction_into_db {
         }
 
         $tree->delete;
+        sleep(2);
     }
 
     return $added;
@@ -461,82 +504,54 @@ sub clean_price {
 
 
 
-my $response = $ua->get("https://www.wolmar.ru/");
-my ($aid)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион VIP №\d+<\/a>/);
-my ($aids)=($response->decoded_content=~/<a href="\/auction\/(\d+)">Аукцион Standart №\d+<\/a>/);
+my $homepage_response = fetch_url("https://www.wolmar.ru/");
+my $homepage_content = $homepage_response->decoded_content;
+my ($aid, $aids) = extract_current_auction_ids($homepage_content);
 
-ensure_past_auctions($response->decoded_content, $dbh) if $dbh;
-
+if ($dbh) {
+    my ($vip_ids, $std_ids) = extract_past_auction_ids($homepage_content);
+    ensure_past_auctions($vip_ids, $std_ids, $dbh);
+}
 
 if ($ARGV[0]) {
-    $aid=$ARGV[0];
-    undef $aids
-}    
+    $aid = $ARGV[0];
+    undef $aids;
+}
 
+die "Не удалось определить ID текущего аукциона с главной страницы" unless $aid;
 
 my $md_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-med?all=1";
 my $sr_url="https://www.wolmar.ru/auction/$aid/monety-rossii-do-1917-serebro?all=1";
 my $ss_url="https://www.wolmar.ru/auction/$aid/monety-rsfsr-sssr-rossii?all=1";
 
-my $md2_url="https://www.wolmar.ru/auction/$aids/monety-rossii-do-1917-med?all=1";
-my $sr2_url="https://www.wolmar.ru/auction/$aids/monety-rossii-do-1917-serebro?all=1";
-my $ss2_url="https://www.wolmar.ru/auction/$aids/monety-rsfsr-sssr-rossii?all=1";
+my $md2_url="https://www.wolmar.ru/auction/$aids/monety-rossii-do-1917-med?all=1" if $aids;
+my $sr2_url="https://www.wolmar.ru/auction/$aids/monety-rossii-do-1917-serebro?all=1" if $aids;
+my $ss2_url="https://www.wolmar.ru/auction/$aids/monety-rsfsr-sssr-rossii?all=1" if $aids;
 
 
 
-print "AID:>> $aid ($aids)\n";
+print "AID:>> $aid (" . ($aids // '') . ")\n";
 my $filename="au$aid.html";
 open(FH, '>:utf8', $filename) or die "Не могу создать файл $filename: $!";
 
-my $tree = HTML::TreeBuilder::XPath->new;
+my @all_pages = ($sr_url, $md_url, $ss_url);
+push @all_pages, ($sr2_url, $md2_url, $ss2_url) if $aids;
 
+sleep(2);  # небольшая пауза после главной страницы
 
-# Получаем страницу
-my $url=$sr_url;
-print "Загружаем страницу: $url\n" if $verbose;
-my $response = $ua->get($url);
-die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
-$tree->parse($response->decoded_content);
-$tree->eof;
-my $url=$md_url;
-print "Загружаем страницу: $url\n" if $verbose;
-my $response = $ua->get($url);
-die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
-# Используем XPath для более гибкого поиска
-$tree->parse($response->decoded_content);
-$tree->eof;
-my $url=$ss_url;
-print "Загружаем страницу: $url\n" if $verbose;
-my $response = $ua->get($url);
-die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
-$tree->parse($response->decoded_content);
-$tree->eof;
-
-
-if ($aids) {
-    my $url=$sr2_url;
+my @trees;
+my @lots;
+for my $url (@all_pages) {
     print "Загружаем страницу: $url\n" if $verbose;
-    my $response = $ua->get($url);
-    die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
+    my $response = fetch_url($url);
+    my $tree = HTML::TreeBuilder::XPath->new;
     $tree->parse($response->decoded_content);
     $tree->eof;
-    my $url=$md2_url;
-    print "Загружаем страницу: $url\n" if $verbose;
-    my $response = $ua->get($url);
-    die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
-    # Используем XPath для более гибкого поиска
-    $tree->parse($response->decoded_content);
-    $tree->eof;
-    my $url=$ss2_url;
-    print "Загружаем страницу: $url\n" if $verbose;
-    my $response = $ua->get($url);
-    die "Ошибка загрузки страницы: " . $response->status_line unless $response->is_success;
-    $tree->parse($response->decoded_content);
-    $tree->eof;
+    push @trees, $tree;
+    push @lots, $tree->findnodes('//tr[@lot_id]');
+    sleep(2);
 }
 
-
-my @lots = $tree->findnodes('//tr[@lot_id]');
 
 
 print "Найдено лотов: " . scalar(@lots) . "\n\n";
@@ -622,7 +637,7 @@ foreach my $lot (@lots) {
     my $link = '';
     if ($title_element) {
         my $href = $title_element->attr('href');
-        $link = URI->new_abs($href, $url)->as_string if $href;
+        $link = URI->new_abs($href, 'https://www.wolmar.ru/')->as_string if $href;
     }
     
     # Год
@@ -780,7 +795,7 @@ foreach my $lot (@lots) {
 
 }
 
-$tree->delete;
+$_->delete for @trees;
 
 $html .= "        </tbody>\n";
 $html .= "    </table>\n";
