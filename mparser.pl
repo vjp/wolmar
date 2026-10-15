@@ -304,8 +304,23 @@ sub format_price {
     return scalar reverse $s;
 }
 
+sub parse_condition {
+    my ($c) = @_;
+    return (undef, undef) unless defined $c && $c ne '';
+    my ($cat, $num);
+    # первая распознанная категория грейда в строке (XF, MS, AU, UNC, PF, PL, ...)
+    if ($c =~ /\b(PO|FR|VG|F|VF|XF|AU|UNC|MS|PF|PL|G)\b/) {
+        $cat = $1;
+    }
+    # первое число в строке — числовой грейд (45, 62, ...), если есть
+    if ($c =~ /(\d+)/) {
+        $num = 0 + $1;
+    }
+    return ($cat, $num);
+}
+
 sub get_history {
-    my ($title, $year, $mint) = @_;
+    my ($title, $year, $mint, $cond) = @_;
     return undef unless $dbh;
     return undef unless $title;
     my $sql = "SELECT price, condition, lot_id, auction_id, parsed_at, mint FROM lots WHERE title = ? AND year = ? AND price > 0";
@@ -327,6 +342,35 @@ sub get_history {
         $min_price = $p if $p < $min_price;
         $max_price = $p if $p > $max_price;
     }
+    # Ищем лот с ближайшей по качеству монетой: совпадение по категории грейда
+    # (префиксу), затем минимальная разница по числовому грейду. При равенстве
+    # берём самый поздний по дате (строки идут от свежих к старым).
+    my ($cur_cat, $cur_num) = parse_condition($cond);
+    my $best;
+    if (defined $cur_cat) {
+        for my $r (@$rows) {
+            my ($cat, $num) = parse_condition($r->[1]);
+            next unless defined $cat && $cat eq $cur_cat;
+            my $dist;
+            if (defined $cur_num && defined $num) {
+                $dist = abs($num - $cur_num);
+            } elsif (!defined $cur_num && !defined $num) {
+                $dist = 0;
+            } else {
+                $dist = 1000;  # один грейд с числом, другой без — считаем худшим
+            }
+            if (!defined $best || $dist < $best->{dist}) {
+                $best = {
+                    price   => $r->[0],
+                    cond    => $r->[1],
+                    dist    => $dist,
+                    auction => $r->[3],
+                    date    => $r->[4],
+                };
+            }
+        }
+    }
+
     return {
         count => $count,
         avg   => $sum / $count,
@@ -335,6 +379,7 @@ sub get_history {
         last  => $rows->[0]->[0],
         last_auction => $rows->[0]->[3],
         last_cond    => $rows->[0]->[1],
+        best  => $best,
         rows  => $rows,
     };
 }
@@ -698,15 +743,19 @@ foreach my $lot (@lots) {
         next;
     }
 
-    my $hist = get_history($title, $lot_year, $mint);
+    my $hist = get_history($title, $lot_year, $mint, $lot_condition);
     my $hist_html = '<td class="price-cell">—</td>';
     my $detail_row = '';
     if ($hist) {
         $hist_row_id++;
         my $hid = "hist-$hist_row_id";
+        my $best = $hist->{best};
+        my $shown_price = $best ? $best->{price} : $hist->{last};
+        my $best_title = $best ? qq{ title="Ближайшая сохранность: $best->{cond}"} : '';
         $hist_html = sprintf(
-            '<td class="price-cell">%s ₽ <span class="expand-icon">▶</span><br><small>%d шт., ср. %s ₽</small></td>',
-            format_price($hist->{last}),
+            '<td class="price-cell"%s>%s ₽ <span class="expand-icon">▶</span><br><small>%d шт., ср. %s ₽</small></td>',
+            $best_title,
+            format_price($shown_price),
             $hist->{count},
             format_price(int($hist->{avg} + 0.5)),
         );
@@ -752,7 +801,9 @@ foreach my $lot (@lots) {
     print "Текущая цена: $price\n";
     if ($hist) {
         my $avg_int = int($hist->{avg} + 0.5);
-        print "История: $hist->{count} продаж, ср. ${avg_int}₽, последняя $hist->{last}₽\n";
+        print "История: $hist->{count} продаж, ср. ${avg_int}₽, последняя $hist->{last}₽";
+        print ", ближайшая ($hist->{best}->{cond}) $hist->{best}->{price}₽" if $hist->{best};
+        print "\n";
     }
     print "Окончание: $end_time\n";
     print "-" x 60 . "\n";
